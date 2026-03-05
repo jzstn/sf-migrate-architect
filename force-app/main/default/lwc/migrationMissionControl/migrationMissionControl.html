@@ -1,0 +1,103 @@
+<template>
+    <div class="mission-control-wrapper slds-p-around_medium">
+        <!-- Dashboard Header -->
+        <header class="slds-media slds-media_center slds-m-bottom_large header-card">
+            <div class="slds-media__figure">
+                <lightning-icon icon-name="custom:custom67" alternative-text="Architect" size="large"></lightning-icon>
+            </div>
+            <div class="slds-media__body">
+                <h1 class="slds-text-heading_large slds-text-color_inverse">Migration Architect <span
+                        class="badge-status">Mission Control</span></h1>
+                <p class="slds-text-body_regular slds-text-color_inverse-weak">Analyze dependencies, mandatory fields,
+                    and loading sequences in real-time.</p>
+            </div>
+            <div class="slds-media__figure slds-media__figure_reverse">
+                <lightning-button variant="brand-outline" label="AI Architect Prompt" icon-name="utility:agent_session"
+                    onclick={handleAiPrompt} class="ai-btn"></lightning-button>
+            </div>
+        </header>
+
+        <div class="slds-grid slds-gutters">
+            <!-- Sidebar: Selection -->
+            <div class="slds-col slds-size_1-of-3">
+                <article class="slds-card selection-card">
+                    <div class="slds-card__header">
+                        <h2 class="slds-text-heading_small">🚀 Choose Migration Target</h2>
+                    </div>
+                    <div class="slds-card__body slds-card__body_inner">
+                        <lightning-dual-listbox name="objects" label="Select Salesforce Objects"
+                            source-label="Available" selected-label="Targeted" options={objectOptions}
+                            value={selectedObjects} onchange={handleObjectChange} size="12">
+                        </lightning-dual-listbox>
+
+                        <div class="slds-m-top_medium">
+                            <lightning-button label="Analyze Migration Roadmap" variant="brand" class="slds-full-width"
+                                onclick={startAnalysis} stretch>
+                            </lightning-button>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Main Panel: The Roadmap -->
+            <div class="slds-col slds-size_2-of-3">
+                <template if:true={isAnalyzing}>
+                    <lightning-spinner alternative-text="Analyzing Metadata..."></lightning-spinner>
+                </template>
+
+                <template if:true={results}>
+                    <div class="roadmap-grid">
+                        <h2 class="slds-text-heading_medium slds-m-bottom_medium roadmap-title">🚦 Your Optimized
+                            Loading Sequence</h2>
+
+                        <div class="sequence-list">
+                            <template for:each={results.sequence} for:item="obj" for:index="idx">
+                                <div key={obj} class="sequence-item slds-grid slds-media slds-media_center">
+                                    <div class="step-num">{stepDisplay(idx)}</div>
+                                    <div class="slds-media__body slds-p-left_medium">
+                                        <div class="slds-grid slds-grid_vertical-align-center">
+                                            <h3 class="object-name">{obj}</h3>
+                                            <span class="slds-badge slds-m-left_small">{getObjectLabel(obj)}</span>
+                                        </div>
+
+                                        <div class="object-audit slds-grid slds-wrap slds-m-top_x-small">
+                                            <span class="audit-badge mandatory">⚠️ {getMandatoryCount(obj)}
+                                                Mandatory</span>
+                                            <span class="audit-badge external">🆔 {getExternalCount(obj)} Ext IDs</span>
+                                            <span class="audit-badge parents">🔗 {getParentList(obj)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Detail Section -->
+                    <div class="slds-m-top_large info-panel">
+                        <div class="slds-grid slds-gutters">
+                            <div class="slds-col">
+                                <div class="risk-card">
+                                    <h4>🛑 Migration Risk Audit</h4>
+                                    <ul>
+                                        <li><strong>Lookups:</strong> Ensure parent records are loaded before Step
+                                            {results.sequence.length}.</li>
+                                        <li><strong>Validation:</strong> Mandatory fields must be formatted correctly in
+                                            source CSV.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <template if:false={results}>
+                    <div class="empty-state">
+                        <img src="/img/chatter/desert.svg" alt="Empty" class="slds-m-bottom_medium" />
+                        <p>Select objects on the left and click <strong>Analyze</strong> to build your architecture
+                            roadmap.</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</template>
