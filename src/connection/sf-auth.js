@@ -36,6 +36,9 @@ class SalesforceAuth {
         const PORT = 3001;
         const REDIRECT_URI = `http://localhost:${PORT}/oauth2/callback`;
 
+        console.log(chalk.gray(`🛠️  Redirect URI configured as: ${REDIRECT_URI}`));
+        console.log(chalk.yellow(`(Ensure this matches EXACTLY in your Salesforce Connected App settings)\n`));
+
         // --- 🛡️ CLEANSE THE CLIENT ID ---
         let clientId = (process.env.SF_CLIENT_ID || '').trim();
 
