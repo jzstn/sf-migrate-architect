@@ -191,16 +191,70 @@ program
 
 program
     .command('demo')
-    .description('Show sample results (Offline)')
+    .description('Show sample results for non-mature teams (no Salesforce login required)')
     .action(async () => {
-        console.log(chalk.magenta.bold('\n✨ DEMO MODE ✨\n'));
-        // ... (demo logic is already standard, keeping it simple or keeping previous version)
-        console.log('Running demo with sample Account metadata...');
+        console.log(chalk.magenta.bold('\n✨ Salesforce Migration Architect - DEMO MODE ✨\n'));
+
+        // 1. Mock Analysis Logic
         const resolver = new DependencyResolver();
-        resolver.dependencies = { 'Account': ['User'] };
-        const sequence = ['User', 'Account'];
-        console.log(chalk.green('\n✅ Loading Order Identified:'));
+
+        // Populate mock metadata
+        resolver.dependencies = {
+            'User': [],
+            'Account': ['User'],
+            'Contact': ['Account'],
+            'Opportunity': ['Account']
+        };
+        resolver.objectMetadata = {
+            'User': { label: 'User', custom: false },
+            'Account': { label: 'Account', custom: false },
+            'Contact': { label: 'Contact', custom: false },
+            'Opportunity': { label: 'Opportunity', custom: false }
+        };
+
+        const mockAccountDetails = {
+            name: 'Account',
+            label: 'Account',
+            totalFields: 54,
+            mandatoryFields: [
+                { name: 'Name', type: 'string' },
+                { name: 'OwnerId', type: 'id' }
+            ],
+            externalIds: [
+                { name: 'AccountNumber', type: 'string' },
+                { name: 'Oracle_ID__c', type: 'string' }
+            ],
+            references: [
+                { name: 'ParentId', referenceTo: ['Account'] }
+            ]
+        };
+
+        console.log(chalk.blue.bold('🔍 PHASE 1: Deep Object Inspection (Sample: Account)'));
+        console.log(chalk.white.bgBlue(`\n--- ${mockAccountDetails.label} [${mockAccountDetails.name}] ---`));
+        console.log(chalk.yellow.bold('\n⚠️  Mandatory Fields:'));
+        mockAccountDetails.mandatoryFields.forEach(f => console.log(`- ${f.name} (${f.type})` || 'N/A'));
+        console.log(chalk.green.bold('\n🆔 External IDs:'));
+        mockAccountDetails.externalIds.forEach(f => console.log(`- ${f.name} (${f.type})`));
+        console.log(chalk.cyan.bold('\n🔗 Relationships:'));
+        mockAccountDetails.references.forEach(f => console.log(`- ${f.name} → ${f.referenceTo}`));
+
+        console.log(chalk.blue.bold('\n🛣️  PHASE 2: Optimal Loading Sequence'));
+        const sequence = resolver.calculateSequence();
+        console.log(chalk.green('✅ Calculated Loading Order:'));
         sequence.forEach((obj, idx) => console.log(`${idx + 1}. ${obj}`));
+
+        console.log(chalk.blue.bold('\n📝 PHASE 3: Executive Reporting'));
+        const reportMd = reportGenerator.generate(sequence, resolver);
+        const fileName = 'demo-migration-plan.md';
+        const filePath = path.join(process.cwd(), fileName);
+        await fs.writeFile(filePath, reportMd);
+        console.log(chalk.cyan.bold(`\n📝 Executive Report saved to: ${fileName}`));
+
+        console.log(chalk.white.bgMagenta('\n🚀 PHASE 4: AI ARCHITECT READY (Copy the block below to ChatGPT!) \n'));
+        const aiPrompt = reportGenerator.generateAIReadyBundle(sequence, resolver);
+        console.log('--- START COPY ---\n' + aiPrompt + '\n--- END COPY ---\n');
+
+        console.log(chalk.gray(`\n💡 To run this on your real Org, use: 'sf-migrate plan' or 'sf-migrate bundle'\n`));
     });
 
 program
