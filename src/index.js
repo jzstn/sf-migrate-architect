@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-// Suppress Node.js deprecation warnings (like punycode) for a cleaner CLI experience
+// Suppress Node.js warnings for a cleaner CLI experience
+process.env.NODE_NO_WARNINGS = '1';
 process.removeAllListeners('warning');
 
 const { Command } = require('commander');
@@ -30,8 +31,18 @@ program
 
         // 1. Auth
         const credentials = await inquirer.prompt([
-            { type: 'input', name: 'username', message: 'Enter Salesforce Username:' },
-            { type: 'password', name: 'password', message: 'Enter Salesforce Password + Security Token:' },
+            {
+                type: 'input',
+                name: 'username',
+                message: 'Enter Salesforce Username:',
+                validate: (input) => input.trim() ? true : 'Username is required.'
+            },
+            {
+                type: 'password',
+                name: 'password',
+                message: 'Enter Salesforce Password + Security Token:',
+                validate: (input) => input.trim() ? true : 'Password is required.'
+            },
             { type: 'list', name: 'loginUrl', message: 'Instance Type:', choices: ['https://login.salesforce.com', 'https://test.salesforce.com'] }
         ]);
 
@@ -96,8 +107,18 @@ program
 
         // 1. Auth (Reuse logic or prompt if needed)
         const credentials = await inquirer.prompt([
-            { type: 'input', name: 'username', message: 'Enter Salesforce Username:' },
-            { type: 'password', name: 'password', message: 'Enter Salesforce Password + Security Token:' },
+            {
+                type: 'input',
+                name: 'username',
+                message: 'Enter Salesforce Username:',
+                validate: (input) => input.trim() ? true : 'Username is required.'
+            },
+            {
+                type: 'password',
+                name: 'password',
+                message: 'Enter Salesforce Password + Security Token:',
+                validate: (input) => input.trim() ? true : 'Password is required.'
+            },
             { type: 'list', name: 'loginUrl', message: 'Instance Type:', choices: ['https://login.salesforce.com', 'https://test.salesforce.com'] }
         ]);
 
