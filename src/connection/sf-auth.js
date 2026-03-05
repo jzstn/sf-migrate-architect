@@ -70,7 +70,12 @@ class SalesforceAuth {
                 const authUrl = this.oauth2.getAuthorizationUrl({ scope: 'api web refresh_token' });
                 console.log(`\n🌐 Opening your browser for secure login...`);
                 console.log(`If it doesn't open automatically, visit: ${authUrl}\n`);
-                await open(authUrl);
+
+                // Native shell command to avoid "open is not a function" errors
+                const exec = require('child_process').exec;
+                const platform = process.platform;
+                const command = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
+                exec(`${command} "${authUrl}"`);
             });
 
             // Timeout after 3 minutes

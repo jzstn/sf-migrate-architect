@@ -47,16 +47,26 @@ program
         ]);
 
         if (loginMode === 'browser') {
-            const spinner = ora('Opening Browser...').start();
+            const { clientId } = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'clientId',
+                    message: 'Enter Salesforce Connected App Client ID:',
+                    default: process.env.SF_CLIENT_ID,
+                    validate: (input) => input.trim() ? true : 'Client ID is required.'
+                }
+            ]);
+
+            const spinnerAuth = ora('Opening Browser...').start();
             try {
+                process.env.SF_CLIENT_ID = clientId;
                 await sfAuth.loginWeb(loginUrlPref);
-                spinner.succeed('Login successful!');
+                spinnerAuth.succeed('Login successful!');
             } catch (err) {
-                spinner.fail('Login failed: ' + err.message);
+                spinnerAuth.fail('Login failed: ' + err.message);
                 process.exit(1);
             }
         } else {
-            // 1. Auth Classic
             const credentials = await inquirer.prompt([
                 {
                     type: 'input',
@@ -72,12 +82,12 @@ program
                 }
             ]);
 
-            const spinner = ora('Logging in to Salesforce...').start();
+            const spinnerAuth = ora('Logging in to Salesforce...').start();
             try {
                 await sfAuth.login(credentials.username, credentials.password, loginUrlPref);
-                spinner.succeed('Login successful!');
+                spinnerAuth.succeed('Login successful!');
             } catch (err) {
-                spinner.fail('Login failed: ' + err.message);
+                spinnerAuth.fail('Login failed: ' + err.message);
                 process.exit(1);
             }
         }
@@ -132,7 +142,7 @@ program
     .action(async (object) => {
         console.log(chalk.blue.bold(`\n🔍 Inspecting Salesforce Object: ${object}\n`));
 
-        // 0. Login Mode Selection
+        // 0. Login Selection
         const { loginMode } = await inquirer.prompt([
             {
                 type: 'list',
@@ -150,8 +160,19 @@ program
         ]);
 
         if (loginMode === 'browser') {
+            const { clientId } = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'clientId',
+                    message: 'Enter Salesforce Connected App Client ID:',
+                    default: process.env.SF_CLIENT_ID,
+                    validate: (input) => input.trim() ? true : 'Client ID is required.'
+                }
+            ]);
+
             const spinnerAuth = ora('Opening Browser...').start();
             try {
+                process.env.SF_CLIENT_ID = clientId;
                 await sfAuth.loginWeb(loginUrlPref);
                 spinnerAuth.succeed('Login successful!');
             } catch (err) {
@@ -242,8 +263,19 @@ program
         ]);
 
         if (loginMode === 'browser') {
+            const { clientId } = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'clientId',
+                    message: 'Enter Salesforce Connected App Client ID:',
+                    default: process.env.SF_CLIENT_ID,
+                    validate: (input) => input.trim() ? true : 'Client ID is required.'
+                }
+            ]);
+
             const spinnerAuth = ora('Opening Browser...').start();
             try {
+                process.env.SF_CLIENT_ID = clientId;
                 await sfAuth.loginWeb(loginUrlPref);
                 spinnerAuth.succeed('Login successful!');
             } catch (err) {
@@ -299,7 +331,6 @@ program
             spinner.fail('Bundle failed: ' + err.message);
         }
     });
-
 
 program
     .command('demo')
