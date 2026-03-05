@@ -36,16 +36,23 @@ class SalesforceAuth {
         const PORT = 3001;
         const REDIRECT_URI = `http://localhost:${PORT}/oauth2/callback`;
 
-        // Final Clean for the Client ID
-        let clientId = (process.env.SF_CLIENT_ID || '').trim().replace(/[\r\n\t]/g, '');
+        // --- 🛡️ CLEANSE THE CLIENT ID ---
+        let clientId = (process.env.SF_CLIENT_ID || '').trim();
 
-        if (!clientId) {
-            throw new Error('No Client ID provided.');
+        // If the user accidentally pasted "npx github:..." into the prompt
+        if (clientId.includes('npx') || clientId.includes('github:')) {
+            clientId = '';
         }
 
-        // Verification for the user
-        const maskedId = `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}`;
-        console.log(chalk.gray(`\n🛠️  Using Client ID: ${maskedId}`));
+        // Clean any potential trailing junk or newlines
+        clientId = clientId.replace(/[\r\n\t\s]/g, '');
+
+        if (!clientId || clientId.length < 10) {
+            throw new Error('Invalid Client ID. Please provide ONLY the Consumer Key from your Connected App.');
+        }
+
+        const maskedId = `${clientId.substring(0, 5)}...${clientId.substring(clientId.length - 5)}`;
+        console.log(chalk.gray(`🛠️  Attempting login with Consumer Key: ${maskedId}`));
 
         this.oauth2 = new jsforce.OAuth2({
             loginUrl: loginUrl,
@@ -65,11 +72,13 @@ class SalesforceAuth {
                     await conn.authorize(code);
                     this.conn = conn;
                     res.send(`
-                        <div style="font-family: sans-serif; text-align: center; padding: 50px; background: #f4f7f9; min-height: 100vh;">
-                            <div style="background: white; padding: 30px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                                <h1 style="color: #2e7d32;">✅ Success!</h1>
-                                <p>Salesforce Architecture CLI is now authenticated.</p>
-                                <p style="color: #666;"><strong>Close this tab and check your terminal.</strong></p>
+                        <div style="font-family: -apple-system, system-ui, sans-serif; text-align: center; padding: 50px; background: #f0f7ff; color: #1a1a1a;">
+                            <div style="background: #ffffff; padding: 40px; border-radius: 12px; display: inline-block; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                                <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+                                <h1 style="color: #2c3e50; margin-bottom: 10px;">Authenticated!</h1>
+                                <p style="font-size: 18px; color: #5d6d7e;">The Migration Planner CLI has received your token.</p>
+                                <hr style="border: none; border-top: 1px solid #e1e8ed; margin: 25px 0;">
+                                <p style="font-weight: bold; color: #3498db;">Return to your terminal to continue.</p>
                             </div>
                         </div>
                     `);
@@ -77,7 +86,7 @@ class SalesforceAuth {
                     setTimeout(() => {
                         server.close();
                         resolve(this.conn);
-                    }, 500);
+                    }, 1000);
                 } catch (err) {
                     res.status(500).send(`Authentication Error: ${err.message}`);
                     server.close();
@@ -86,37 +95,52 @@ class SalesforceAuth {
             });
 
             server = app.listen(PORT, (err) => {
-                if (err) return reject(err);
+                if (err) {
+                    if (err.code === 'EADDRINUSE') {
+                        return reject(new Error('Port 3001 is already in use. Run "kill -9 $(lsof -t -i:3001)" to free it up.'));
+                    }
+                    return reject(err);
+                }
 
                 const authUrl = this.oauth2.getAuthorizationUrl({
                     scope: 'api web refresh_token',
                     prompt: 'login'
                 });
 
-                console.log(chalk.cyan(`\n🌐 Authentication Link Generated:`));
+                console.log(chalk.cyan(`\n🔗 Action Required: Complete Login in Browser`));
                 console.log(chalk.blue.underline(authUrl));
-                console.log(chalk.gray(`\nAttempting to open your default browser...`));
+                console.log(chalk.gray(`\nWaiting for up to 10 minutes for you to sign in...`));
 
-                // Platforms-Specific Launch
+                // macOS Specific command that works with long URLs and spaces
                 const platform = process.platform;
                 let openCmd;
 
                 if (platform === 'darwin') {
-                    openCmd = `open "${authUrl}"`; // Mac doesn't need escapes for simple browser opens
+                    openCmd = `open '${authUrl.replace(/'/g, "'\\''")}'`; // Properly escape for bash
                 } else if (platform === 'win32') {
-                    openCmd = `start "" "${authUrl.replace(/&/g, '^&')}"`; // Windows shell needs escapes
+                    openCmd = `start "" "${authUrl.replace(/&/g, '^&')}"`;
                 } else {
                     openCmd = `xdg-open "${authUrl}"`;
                 }
 
-                exec(openCmd);
+                exec(openCmd, (e) => {
+                    if (e) console.log(chalk.yellow(`\nBrowser failed to pop up. Please Command-Click the blue link above manually.`));
+                });
             });
 
-            // Increased timeout for slow MFA responses
+            // Handle server start error (for EADDRINUSE)
+            server.on('error', (err) => {
+                if (err.code === 'EADDRINUSE') {
+                    reject(new Error(`Conflict: Port 3001 is locked. Run 'kill -9 $(lsof -t -i:3001)' to reset it.`));
+                } else {
+                    reject(err);
+                }
+            });
+
             setTimeout(() => {
                 if (server.listening) {
                     server.close();
-                    reject(new Error('Authentication timed out. Ensure you finished the login in your browser.'));
+                    reject(new Error('Authentication timed out. If you had trouble, try the link again.'));
                 }
             }, 600000); // 10 minutes
         });
