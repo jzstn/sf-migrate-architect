@@ -4,10 +4,12 @@
   "description": "Salesforce Migration Planner for non-mature teams",
   "main": "src/index.js",
   "bin": {
-    "sf-migrate": "./src/index.js"
+    "sf-migrate": "./src/index.js",
+    "mcp-migrate": "./src/mcp-server.js"
   },
   "scripts": {
     "start": "node src/index.js",
+    "mcp": "node src/mcp-server.js",
     "build": "pkg . --out-path release",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
