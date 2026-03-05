@@ -141,6 +141,27 @@ class SalesforceAuth {
         });
     }
 
+    async loginSession(accessToken, instanceUrl) {
+        if (!accessToken || !instanceUrl) {
+            throw new Error('Access Token and Instance URL are required.');
+        }
+
+        const instUrl = instanceUrl.startsWith('http') ? instanceUrl : `https://${instanceUrl}`;
+
+        this.conn = new jsforce.Connection({
+            instanceUrl: instUrl,
+            accessToken: accessToken
+        });
+
+        // Test the connection
+        try {
+            await this.conn.identity();
+            return this.conn;
+        } catch (err) {
+            throw new Error(`Invalid Session: ${err.message}`);
+        }
+    }
+
     getConnection() {
         return this.conn;
     }
