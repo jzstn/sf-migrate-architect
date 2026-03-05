@@ -1,8 +1,8 @@
 require('dotenv').config();
 const jsforce = require('jsforce');
 const express = require('express');
-const open = require('open');
 const path = require('path');
+const { exec } = require('child_process');
 
 class SalesforceAuth {
     constructor() {
@@ -35,9 +35,13 @@ class SalesforceAuth {
         const PORT = 3001;
         const REDIRECT_URI = `http://localhost:${PORT}/oauth2/callback`;
 
-        // We use a default Salesforce CLI Client ID for universal access
-        // Or you can overwrite this with your own Connected App ID in .env
-        const clientId = process.env.SF_CLIENT_ID || '3MVG99Oxm_qI6wh0S1m99f8m99l99f8m99l99f8m99l99f8m99l99f8m99l99f8m99l99f8m99';
+        // Clean the Client ID (pasting often adds newlines/spaces)
+        let clientId = process.env.SF_CLIENT_ID || '';
+        clientId = clientId.replace(/\s/g, ''); // Remove all whitespace
+
+        if (!clientId) {
+            throw new Error('No Client ID provided.');
+        }
 
         this.oauth2 = new jsforce.OAuth2({
             loginUrl: loginUrl,
@@ -56,9 +60,19 @@ class SalesforceAuth {
                 try {
                     await conn.authorize(code);
                     this.conn = conn;
-                    res.send('<h1>Authentication Successful!</h1><p>You can now close this tab and return to your terminal.</p>');
-                    server.close();
-                    resolve(this.conn);
+                    res.send(`
+                        <div style="font-family: sans-serif; text-align: center; padding: 50px;">
+                            <h1 style="color: #2e7d32;">✅ Authentication Successful!</h1>
+                            <p>The Salesforce Migration Planner has received your secure token.</p>
+                            <p><strong>You can now close this tab and return to your terminal.</strong></p>
+                        </div>
+                    `);
+
+                    // Delay closing slightly to ensure the browser receives the response
+                    setTimeout(() => {
+                        server.close();
+                        resolve(this.conn);
+                    }, 1000);
                 } catch (err) {
                     res.status(500).send(`Authentication Error: ${err.message}`);
                     server.close();
@@ -66,23 +80,35 @@ class SalesforceAuth {
                 }
             });
 
-            server = app.listen(PORT, async () => {
-                const authUrl = this.oauth2.getAuthorizationUrl({ scope: 'api web refresh_token' });
+            server = app.listen(PORT, (err) => {
+                if (err) return reject(err);
+
+                const authUrl = this.oauth2.getAuthorizationUrl({
+                    scope: 'api web refresh_token',
+                    prompt: 'login' // Force login screen
+                });
+
                 console.log(`\n🌐 Opening your browser for secure login...`);
                 console.log(`If it doesn't open automatically, visit: ${authUrl}\n`);
 
-                // Native shell command to avoid "open is not a function" errors
-                const exec = require('child_process').exec;
+                // Native platform command to open browser
                 const platform = process.platform;
-                const command = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
-                exec(`${command} "${authUrl}"`);
+                const cmd = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
+
+                exec(`${cmd} "${authUrl.replace(/&/g, '^&')}"`, (error) => {
+                    if (error) {
+                        console.log(chalk.yellow(`Note: Could not open browser automatically. Please click the link above manually.`));
+                    }
+                });
             });
 
-            // Timeout after 3 minutes
+            // Timeout after 5 minutes (increased for slower SSO logins)
             setTimeout(() => {
-                server.close();
-                reject(new Error('Authentication timed out after 3 minutes.'));
-            }, 180000);
+                if (server.listening) {
+                    server.close();
+                    reject(new Error('Authentication timed out after 5 minutes.'));
+                }
+            }, 300000);
         });
     }
 
