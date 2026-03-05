@@ -3,6 +3,7 @@ const jsforce = require('jsforce');
 const express = require('express');
 const path = require('path');
 const { exec } = require('child_process');
+const chalk = require('chalk');
 
 class SalesforceAuth {
     constructor() {
@@ -35,13 +36,16 @@ class SalesforceAuth {
         const PORT = 3001;
         const REDIRECT_URI = `http://localhost:${PORT}/oauth2/callback`;
 
-        // Clean the Client ID (pasting often adds newlines/spaces)
-        let clientId = process.env.SF_CLIENT_ID || '';
-        clientId = clientId.replace(/\s/g, ''); // Remove all whitespace
+        // Final Clean for the Client ID
+        let clientId = (process.env.SF_CLIENT_ID || '').trim().replace(/[\r\n\t]/g, '');
 
         if (!clientId) {
             throw new Error('No Client ID provided.');
         }
+
+        // Verification for the user
+        const maskedId = `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}`;
+        console.log(chalk.gray(`\n🛠️  Using Client ID: ${maskedId}`));
 
         this.oauth2 = new jsforce.OAuth2({
             loginUrl: loginUrl,
@@ -61,18 +65,19 @@ class SalesforceAuth {
                     await conn.authorize(code);
                     this.conn = conn;
                     res.send(`
-                        <div style="font-family: sans-serif; text-align: center; padding: 50px;">
-                            <h1 style="color: #2e7d32;">✅ Authentication Successful!</h1>
-                            <p>The Salesforce Migration Planner has received your secure token.</p>
-                            <p><strong>You can now close this tab and return to your terminal.</strong></p>
+                        <div style="font-family: sans-serif; text-align: center; padding: 50px; background: #f4f7f9; min-height: 100vh;">
+                            <div style="background: white; padding: 30px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <h1 style="color: #2e7d32;">✅ Success!</h1>
+                                <p>Salesforce Architecture CLI is now authenticated.</p>
+                                <p style="color: #666;"><strong>Close this tab and check your terminal.</strong></p>
+                            </div>
                         </div>
                     `);
 
-                    // Delay closing slightly to ensure the browser receives the response
                     setTimeout(() => {
                         server.close();
                         resolve(this.conn);
-                    }, 1000);
+                    }, 500);
                 } catch (err) {
                     res.status(500).send(`Authentication Error: ${err.message}`);
                     server.close();
@@ -85,30 +90,35 @@ class SalesforceAuth {
 
                 const authUrl = this.oauth2.getAuthorizationUrl({
                     scope: 'api web refresh_token',
-                    prompt: 'login' // Force login screen
+                    prompt: 'login'
                 });
 
-                console.log(`\n🌐 Opening your browser for secure login...`);
-                console.log(`If it doesn't open automatically, visit: ${authUrl}\n`);
+                console.log(chalk.cyan(`\n🌐 Authentication Link Generated:`));
+                console.log(chalk.blue.underline(authUrl));
+                console.log(chalk.gray(`\nAttempting to open your default browser...`));
 
-                // Native platform command to open browser
+                // Platforms-Specific Launch
                 const platform = process.platform;
-                const cmd = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
+                let openCmd;
 
-                exec(`${cmd} "${authUrl.replace(/&/g, '^&')}"`, (error) => {
-                    if (error) {
-                        console.log(chalk.yellow(`Note: Could not open browser automatically. Please click the link above manually.`));
-                    }
-                });
+                if (platform === 'darwin') {
+                    openCmd = `open "${authUrl}"`; // Mac doesn't need escapes for simple browser opens
+                } else if (platform === 'win32') {
+                    openCmd = `start "" "${authUrl.replace(/&/g, '^&')}"`; // Windows shell needs escapes
+                } else {
+                    openCmd = `xdg-open "${authUrl}"`;
+                }
+
+                exec(openCmd);
             });
 
-            // Timeout after 5 minutes (increased for slower SSO logins)
+            // Increased timeout for slow MFA responses
             setTimeout(() => {
                 if (server.listening) {
                     server.close();
-                    reject(new Error('Authentication timed out after 5 minutes.'));
+                    reject(new Error('Authentication timed out. Ensure you finished the login in your browser.'));
                 }
-            }, 300000);
+            }, 600000); // 10 minutes
         });
     }
 
