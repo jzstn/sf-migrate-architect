@@ -29,30 +29,57 @@ program
     .action(async () => {
         console.log(chalk.blue.bold('\n🚀 Salesforce Migration Planner\n'));
 
-        // 1. Auth
-        const credentials = await inquirer.prompt([
+        // 0. Login Mode Selection
+        const { loginMode } = await inquirer.prompt([
             {
-                type: 'input',
-                name: 'username',
-                message: 'Enter Salesforce Username:',
-                validate: (input) => input.trim() ? true : 'Username is required.'
-            },
-            {
-                type: 'password',
-                name: 'password',
-                message: 'Enter Salesforce Password + Security Token:',
-                validate: (input) => input.trim() ? true : 'Password is required.'
-            },
-            { type: 'list', name: 'loginUrl', message: 'Instance Type:', choices: ['https://login.salesforce.com', 'https://test.salesforce.com'] }
+                type: 'list',
+                name: 'loginMode',
+                message: 'How would you like to login?',
+                choices: [
+                    { name: '🌐 Seamless Browser Login (Modern / SSO / MFA)', value: 'browser' },
+                    { name: '⌨️  Classic Terminal Login (Username/Password + Token)', value: 'classic' }
+                ]
+            }
         ]);
 
-        const spinner = ora('Logging in to Salesforce...').start();
-        try {
-            await sfAuth.login(credentials.username, credentials.password, credentials.loginUrl);
-            spinner.succeed('Login successful!');
-        } catch (err) {
-            spinner.fail('Login failed: ' + err.message);
-            process.exit(1);
+        const { loginUrlPref } = await inquirer.prompt([
+            { type: 'list', name: 'loginUrlPref', message: 'Instance Type:', choices: ['https://login.salesforce.com', 'https://test.salesforce.com'] }
+        ]);
+
+        if (loginMode === 'browser') {
+            const spinner = ora('Opening Browser...').start();
+            try {
+                await sfAuth.loginWeb(loginUrlPref);
+                spinner.succeed('Login successful!');
+            } catch (err) {
+                spinner.fail('Login failed: ' + err.message);
+                process.exit(1);
+            }
+        } else {
+            // 1. Auth Classic
+            const credentials = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'username',
+                    message: 'Enter Salesforce Username:',
+                    validate: (input) => input.trim() ? true : 'Username is required.'
+                },
+                {
+                    type: 'password',
+                    name: 'password',
+                    message: 'Enter Salesforce Password + Security Token:',
+                    validate: (input) => input.trim() ? true : 'Password is required.'
+                }
+            ]);
+
+            const spinner = ora('Logging in to Salesforce...').start();
+            try {
+                await sfAuth.login(credentials.username, credentials.password, loginUrlPref);
+                spinner.succeed('Login successful!');
+            } catch (err) {
+                spinner.fail('Login failed: ' + err.message);
+                process.exit(1);
+            }
         }
 
         // 2. Object Selection
@@ -105,30 +132,63 @@ program
     .action(async (object) => {
         console.log(chalk.blue.bold(`\n🔍 Inspecting Salesforce Object: ${object}\n`));
 
-        // 1. Auth (Reuse logic or prompt if needed)
-        const credentials = await inquirer.prompt([
+        // 0. Login Mode Selection
+        const { loginMode } = await inquirer.prompt([
             {
-                type: 'input',
-                name: 'username',
-                message: 'Enter Salesforce Username:',
-                validate: (input) => input.trim() ? true : 'Username is required.'
-            },
-            {
-                type: 'password',
-                name: 'password',
-                message: 'Enter Salesforce Password + Security Token:',
-                validate: (input) => input.trim() ? true : 'Password is required.'
-            },
-            { type: 'list', name: 'loginUrl', message: 'Instance Type:', choices: ['https://login.salesforce.com', 'https://test.salesforce.com'] }
+                type: 'list',
+                name: 'loginMode',
+                message: 'How would you like to login?',
+                choices: [
+                    { name: '🌐 Seamless Browser Login (Modern / SSO / MFA)', value: 'browser' },
+                    { name: '⌨️  Classic Terminal Login (Username/Password + Token)', value: 'classic' }
+                ]
+            }
         ]);
 
-        const spinner = ora('Connecting...').start();
-        try {
-            await sfAuth.login(credentials.username, credentials.password, credentials.loginUrl);
-            spinner.succeed('Connected!');
+        const { loginUrlPref } = await inquirer.prompt([
+            { type: 'list', name: 'loginUrlPref', message: 'Instance Type:', choices: ['https://login.salesforce.com', 'https://test.salesforce.com'] }
+        ]);
 
+        if (loginMode === 'browser') {
+            const spinnerAuth = ora('Opening Browser...').start();
+            try {
+                await sfAuth.loginWeb(loginUrlPref);
+                spinnerAuth.succeed('Login successful!');
+            } catch (err) {
+                spinnerAuth.fail('Login failed: ' + err.message);
+                process.exit(1);
+            }
+        } else {
+            const credentials = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'username',
+                    message: 'Enter Salesforce Username:',
+                    validate: (input) => input.trim() ? true : 'Username is required.'
+                },
+                {
+                    type: 'password',
+                    name: 'password',
+                    message: 'Enter Salesforce Password + Security Token:',
+                    validate: (input) => input.trim() ? true : 'Password is required.'
+                }
+            ]);
+
+            const spinnerAuth = ora('Connecting...').start();
+            try {
+                await sfAuth.login(credentials.username, credentials.password, loginUrlPref);
+                spinnerAuth.succeed('Connected!');
+            } catch (err) {
+                spinnerAuth.fail('Login failed: ' + err.message);
+                process.exit(1);
+            }
+        }
+
+        const spinner = ora('Fetching Object Metadata...').start();
+        try {
             const resolver = new DependencyResolver();
             const analysis = await resolver.inspectObject(object);
+            spinner.succeed('Analysis complete!');
 
             console.log(chalk.white.bgBlue(`\n--- ${analysis.label} [${analysis.name}] ---`));
             console.log(chalk.gray(`Total Fields: ${analysis.totalFields}`));
@@ -157,6 +217,89 @@ program
             spinner.fail('Inspection failed: ' + err.message);
         }
     });
+
+program
+    .command('bundle')
+    .description('Analyze and generate a single copy-paste block for AI')
+    .action(async () => {
+        console.log(chalk.blue.bold('\n🚀 Salesforce Migration Bundle (AI-Ready)\n'));
+
+        // 0. Login Selection
+        const { loginMode } = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'loginMode',
+                message: 'How would you like to login?',
+                choices: [
+                    { name: '🌐 Seamless Browser Login (Modern / SSO / MFA)', value: 'browser' },
+                    { name: '⌨️  Classic Terminal Login (Username/Password + Token)', value: 'classic' }
+                ]
+            }
+        ]);
+
+        const { loginUrlPref } = await inquirer.prompt([
+            { type: 'list', name: 'loginUrlPref', message: 'Instance Type:', choices: ['https://login.salesforce.com', 'https://test.salesforce.com'] }
+        ]);
+
+        if (loginMode === 'browser') {
+            const spinnerAuth = ora('Opening Browser...').start();
+            try {
+                await sfAuth.loginWeb(loginUrlPref);
+                spinnerAuth.succeed('Login successful!');
+            } catch (err) {
+                spinnerAuth.fail('Login failed: ' + err.message);
+                process.exit(1);
+            }
+        } else {
+            const credentials = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'username',
+                    message: 'Enter Salesforce Username:',
+                    validate: (input) => input.trim() ? true : 'Username is required.'
+                },
+                {
+                    type: 'password',
+                    name: 'password',
+                    message: 'Enter Salesforce Password + Security Token:',
+                    validate: (input) => input.trim() ? true : 'Password is required.'
+                }
+            ]);
+
+            const spinnerAuth = ora('Connecting...').start();
+            try {
+                await sfAuth.login(credentials.username, credentials.password, loginUrlPref);
+                spinnerAuth.succeed('Connected!');
+            } catch (err) {
+                spinnerAuth.fail('Login failed: ' + err.message);
+                process.exit(1);
+            }
+        }
+
+        const spinner = ora('Analyzing Metadata...').start();
+        try {
+            const { objectsInput } = await inquirer.prompt([
+                { type: 'input', name: 'objectsInput', message: 'Enter objects (comma separated):' }
+            ]);
+
+            const targetObjects = objectsInput.split(',').map(s => s.trim());
+            const resolver = new DependencyResolver();
+            await resolver.fetchMetadata(targetObjects);
+            const sequence = resolver.calculateSequence();
+
+            spinner.succeed('Analysis complete!');
+
+            const aiBundle = reportGenerator.generateAIReadyBundle(sequence, resolver);
+            console.log('\n--- START COPY ---');
+            console.log(aiBundle);
+            console.log('--- END COPY ---\n');
+            console.log(chalk.green('Successfully bundled. Copy the text above into ChatGPT/Claude.'));
+
+        } catch (err) {
+            spinner.fail('Bundle failed: ' + err.message);
+        }
+    });
+
 
 program
     .command('demo')
