@@ -47,19 +47,26 @@ program
         ]);
 
         if (loginMode === 'browser') {
-            const { clientId } = await inquirer.prompt([
+            const { clientId, clientSecret } = await inquirer.prompt([
                 {
                     type: 'input',
                     name: 'clientId',
                     message: 'Enter Salesforce Connected App Client ID:',
                     default: process.env.SF_CLIENT_ID,
                     validate: (input) => input.trim() ? true : 'Client ID is required.'
+                },
+                {
+                    type: 'password',
+                    name: 'clientSecret',
+                    message: 'Enter Client Secret (Leave blank if not required):',
+                    default: process.env.SF_CLIENT_SECRET
                 }
             ]);
 
             const spinnerAuth = ora('Opening Browser...').start();
             try {
                 process.env.SF_CLIENT_ID = clientId;
+                process.env.SF_CLIENT_SECRET = clientSecret;
                 await sfAuth.loginWeb(loginUrlPref);
                 spinnerAuth.succeed('Login successful!');
             } catch (err) {
@@ -160,19 +167,26 @@ program
         ]);
 
         if (loginMode === 'browser') {
-            const { clientId } = await inquirer.prompt([
+            const { clientId, clientSecret } = await inquirer.prompt([
                 {
                     type: 'input',
                     name: 'clientId',
                     message: 'Enter Salesforce Connected App Client ID:',
                     default: process.env.SF_CLIENT_ID,
                     validate: (input) => input.trim() ? true : 'Client ID is required.'
+                },
+                {
+                    type: 'password',
+                    name: 'clientSecret',
+                    message: 'Enter Client Secret (Leave blank if not required):',
+                    default: process.env.SF_CLIENT_SECRET
                 }
             ]);
 
             const spinnerAuth = ora('Opening Browser...').start();
             try {
                 process.env.SF_CLIENT_ID = clientId;
+                process.env.SF_CLIENT_SECRET = clientSecret;
                 await sfAuth.loginWeb(loginUrlPref);
                 spinnerAuth.succeed('Login successful!');
             } catch (err) {
@@ -263,19 +277,26 @@ program
         ]);
 
         if (loginMode === 'browser') {
-            const { clientId } = await inquirer.prompt([
+            const { clientId, clientSecret } = await inquirer.prompt([
                 {
                     type: 'input',
                     name: 'clientId',
                     message: 'Enter Salesforce Connected App Client ID:',
                     default: process.env.SF_CLIENT_ID,
                     validate: (input) => input.trim() ? true : 'Client ID is required.'
+                },
+                {
+                    type: 'password',
+                    name: 'clientSecret',
+                    message: 'Enter Client Secret (Leave blank if not required):',
+                    default: process.env.SF_CLIENT_SECRET
                 }
             ]);
 
             const spinnerAuth = ora('Opening Browser...').start();
             try {
                 process.env.SF_CLIENT_ID = clientId;
+                process.env.SF_CLIENT_SECRET = clientSecret;
                 await sfAuth.loginWeb(loginUrlPref);
                 spinnerAuth.succeed('Login successful!');
             } catch (err) {

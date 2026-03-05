@@ -57,9 +57,17 @@ class SalesforceAuth {
         const maskedId = `${clientId.substring(0, 5)}...${clientId.substring(clientId.length - 5)}`;
         console.log(chalk.gray(`🛠️  Attempting login with Consumer Key: ${maskedId}`));
 
+        let clientSecret = (process.env.SF_CLIENT_SECRET || '').trim();
+        clientSecret = clientSecret.replace(/[\r\n\t\s]/g, '');
+
+        if (clientSecret) {
+            console.log(chalk.gray(`🛠️  Client Secret provided. Using Web Server Flow.`));
+        }
+
         this.oauth2 = new jsforce.OAuth2({
             loginUrl: loginUrl,
             clientId: clientId,
+            clientSecret: clientSecret || undefined,
             redirectUri: REDIRECT_URI
         });
 
