@@ -4,7 +4,7 @@
   "description": "Salesforce Migration Planner for non-mature teams",
   "main": "src/index.js",
   "bin": {
-    "sf-migrate": "./src/index.js",
+    "sf-migrate-architect": "./src/index.js",
     "mcp-migrate": "./src/mcp-server.js"
   },
   "scripts": {
