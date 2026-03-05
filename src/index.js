@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// Suppress Node.js deprecation warnings (like punycode) for a cleaner CLI experience
+process.removeAllListeners('warning');
+
 const { Command } = require('commander');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
